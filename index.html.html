@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中秋快乐 ❤ 爱心代码</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a1a;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "Microsoft YaHei", "楷体", sans-serif;
+        }
+        canvas { display: block; }
+        .blessing {
+            position: absolute;
+            bottom: 8%;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+        }
+        .blessing h1 {
+            color: #ffd700;
+            font-size: 3rem;
+            letter-spacing: 0.5rem;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.6),
+                         0 0 60px rgba(255, 215, 0, 0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        .blessing p {
+            color: #ffb6c1;
+            font-size: 1.2rem;
+            margin-top: 10px;
+            letter-spacing: 0.3rem;
+            opacity: 0.8;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+            to   { text-shadow: 0 0 50px rgba(255, 215, 0, 0.8),
+                               0 0 80px rgba(255, 215, 0, 0.4); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="heartCanvas"></canvas>
+    <div class="blessing">
+        <h1>中秋快乐</h1>
+        <p>愿月圆人圆事事圆</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // 心形参数方程
+        function heartPoint(t) {
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t)
+                       - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+            return { x, y };
+        }
+
+        const PARTICLE_COUNT = 1200;
+        const SCALE = 12;
+        const CX = canvas.width / 2;
+        const CY = canvas.height / 2 - 60;
+
+        let particles = [];
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const pt = heartPoint(t);
+
+                // 随机初始位置
+                const startX = Math.random() * canvas.width;
+                const startY = Math.random() * canvas.height;
+
+                // 目标位置（加随机偏移让粒子分布在爱心轮廓附近）
+                const offset = (Math.random() - 0.5) * 20;
+                const targetX = CX + pt.x * SCALE + offset;
+                const targetY = CY + pt.y * SCALE + offset;
+
+                particles.push({
+                    x: startX,
+                    y: startY,
+                    targetX: targetX,
+                    targetY: targetY,
+                    vx: 0,
+                    vy: 0,
+                    radius: 1 + Math.random() * 2,
+                    // 粉色到金色的渐变
+                    hue: 330 + Math.random() * 60,
+                    saturation: 80 + Math.random() * 20,
+                    lightness: 60 + Math.random() * 25,
+                    alpha: 0.6 + Math.random() * 0.4,
+                    arrived: false,
+                    delay: Math.random() * 120
+                });
+            }
+        }
+
+        let frameCount = 0;
+
+        function animate() {
+            // 半透明清除，产生拖尾效果
+            ctx.fillStyle = 'rgba(10, 10, 26, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            frameCount++;
+            let allArrived = true;
+
+            particles.forEach(p => {
+                if (frameCount < p.delay) {
+                    allArrived = false;
+                    return;
+                }
+
+                const dx = p.targetX - p.x;
+                const dy = p.targetY - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 1.5) {
+                    allArrived = false;
+                    // 引力
+                    p.vx += dx * 0.008;
+                    p.vy += dy * 0.008;
+                    // 阻尼
+                    p.vx *= 0.92;
+                    p.vy *= 0.92;
+                    // 随机扰动
+                    p.vx += (Math.random() - 0.5) * 0.3;
+                    p.vy += (Math.random() - 0.5) * 0.3;
+                } else {
+                    // 到达目标后轻微波动
+                    p.vx += (Math.random() - 0.5) * 0.15;
+                    p.vy += (Math.random() - 0.5) * 0.15;
+                    p.vx *= 0.85;
+                    p.vy *= 0.85;
+                }
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // 绘制粒子
+                const flicker = 0.7 + 0.3 * Math.sin(frameCount * 0.05 + p.delay);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * flicker, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, ${p.alpha * flicker})`;
+                ctx.fill();
+
+                // 发光效果
+                if (p.radius > 2) {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius * 3, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, 0.08)`;
+                    ctx.fill();
+                }
+            });
+
+            // 全部到达后，爱心整体脉动
+            if (allArrived && frameCount % 40 === 0) {
+                particles.forEach(p => {
+                    p.vx += (Math.random() - 0.5) * 0.8;
+                    p.vy += (Math.random() - 0.5) * 0.8;
+                });
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // 窗口大小自适应
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>
